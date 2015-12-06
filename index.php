@@ -443,6 +443,12 @@ class MyQueryBuilder
         }
 
         $query->execute($this->execute_params);
+        
+        $this->sql = '';
+        $this->limit_params = '';
+        $this->execute_params = '';
+        $this->start_where = '';
+        $this->start_having = '';
     }
 
 
