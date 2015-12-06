@@ -1,33 +1,31 @@
 <?php
 
-$config = array(
-	'type'=>'mysql',
-	'user'=>'root',
-	'pass'=>'',
-	'host'=>'localhost', 
-	'dbname'=>'MyQueryBuilder',
-	'charset'=>'charset=utf8'
-);
-
-class MyQueryBuilder extends PDO
+class MyQueryBuilder
 {
-	public $sql;
-	private $where, $limit, $insert, $update_columns, $update_params;
-    public $in = array('in','IN', 'not in', 'NOT IN');
-    public $like = array('like','LIKE', 'or like', 'OR LIKE', 'NOT LIKE', 'not like', 'OR NOT LIKE','or not like');
-
+	public $sql, $execute_params, $limit_params, $start_where, $start_having;
+   
 	public function __construct($config) 
     {	
-    	parent::__construct($config['type'].':host='.$config['host'].';dbname='.$config['dbname'].';'.$config['charset'], $config['user'], $config['pass']);
+        $dsn = "$config[type]:host=$config[host];dbname=$config[dbname]";
+        $this->pdo = new PDO($dsn, $config[user], $config[pass]);
     }
 
+
+    /* * * * * * * * * * * * *  * * * * * * * * * * * * ** * * * * *  
+    * CREATE TABLE Table1 (id int not null, name varchar(30))      *
+    *                                                              *
+    * $db->createTable('Table1', array(                            *
+    *   'id'   => 'int not null',                                  *
+    *   'name' => 'varchar(30)'                                    *
+    * ));                                                          *
+    *                                                              */
     public function create($table, $columns, $options=null)
     {
-        $this->sql .= "CREATE TABLE `$table` ( ";
+        $this->sql .= "CREATE TABLE $table ( ";
 
         foreach($columns as $key => $value)
         {
-            $this->sql .= "`$key` $value, ";
+            $this->sql .= "$key $value, ";
         }
 
         $this->sql = substr($this->sql, 0, -2);
@@ -36,14 +34,23 @@ class MyQueryBuilder extends PDO
         return $this;
     }
 
-     public function update($table, $columns, $conditions = '', $params = array())
+
+
+    /* * * * * * * *  * * * * * * * *  * * * * **  * * * * ** *  * * ** * * ** **
+    *  UPDATE Table1                                                            *   
+    *  SET x = 1                                                                *
+    *  WHERE (id = 1) or (id = 2)                                               *
+    *                                                                           *
+    *  $db->update('Table1', array('x'=>1), 'id = ? or id = ?', array(1,2));    *
+    *                                                                           */    
+    public function update($table, $columns, $conditions = '', $params = array())
     {
-        $this->sql .= "UPDATE `$table` SET ";
+        $this->sql .= "UPDATE $table SET ";
 
         foreach($columns as $key => $value)
         {
-            $this->sql .= "`$key`= ?, ";
-            $this->update_columns[] = $value;
+            $this->sql .= "$key = ?, ";
+            $this->execute_params[] = $value;
         }
         
         $this->sql = substr($this->sql, 0, -2);
@@ -51,395 +58,402 @@ class MyQueryBuilder extends PDO
 
         foreach($params as $v)
         {
-            $this->update_params[] = $v;
+            $this->execute_params[] = $v;
         }
         return $this;
-    }
+    }   
 
+
+
+    /* * * * * * * *  * * * * * * * *  * * * * **  * * * * ** *  * * ** *
+    *  INSERT INTO Table1 (id,name) VALUES (5, 'Ульяновск');            *
+    *                                                                   *
+    *  $db->insert('Table1', array('id'=>'5','name'=>'Ульяновск'));     *
+    *                                                                   */                                                          
     public function insert($table, $columns)
     {
-        $this->sql .= "INSERT INTO `$table` (";
+        $this->sql .= "INSERT INTO $table (";
 
         foreach($columns as $key => $value)
         {
-            $this->sql .= "`$key`, ";
-            $this->insert[] = $value; 
+            $this->sql .= "$key, ";
+            $this->execute_params[] = $value;
         }
 
         $this->sql = substr($this->sql, 0, -2);
         $this->sql .= ') VALUES (';
-        $this->sql .= str_repeat('?, ',count($this->insert));    
+        $this->sql .= str_repeat('?, ',count($this->execute_params));    
         $this->sql = substr($this->sql, 0, -2);
         $this->sql .= ') ';
         return $this;
     }
 
+
+
+    /* * * * * * *  * * * * * * * *  * * * * **  * * * * ** *  * * ** *
+    *   DELETE FROM Table1 WHERE (id = 1) OR (id = 2)                 *
+    *                                                                 *
+    *   $db->delete('Table1', 'id = ? or id = ?', array(1,2));        *   
+    *                                                                 */
     public function delete($table, $conditions = '', $params = array())
     {
-        $this->sql .= "DELETE FROM `$table` WHERE ($conditions) ";
+        $this->sql .= "DELETE FROM $table WHERE ($conditions) ";
 
         foreach($params as $v)
         {
-            $this->delete_params[] = $v;
+            $this->execute_params[] = $v;
         }
         return $this;
     }
 
+
+
+    /** * * * * *  * * * * * * *  * * * * * *
+    *   SELECT *                            *
+    *   SELECT x1,x2                        *
+    *                                       *
+    *   select()                            *
+    *   select('x1,x2')                     *
+    *   select(array('x1','x2'))            *
+    *                                       */
     public function select($columns = '*')
     {
-        /* если на вход подан массив столбцов 
-        */
-    	if (is_array($columns))
+        if(is_array($columns))
         {
-            /* экранируем и фильтруем названия столбцов в массиве         */
-            $j = 0;
-            while($j != (count($columns))) 
-            {
-                $columns[$j] = '`'.$this->normalize($columns[$j]).'`';
-                $j++;
-            }
-            /* ---------------------------------------------------------- */
-
-        	$this->sql = 'SELECT '.implode(',',$columns).' ';
+            $this->sql .= 'SELECT '.implode(',',$columns).' '; 
         }
-
-        /* если на вход подана простая строка столбцов 
-        */
-        elseif(is_string($columns))
+        else
         {   
-        	$this->sql = 'SELECT '.$this->normalize($columns).' ';
-        }	
-    	return $this;
+            $this->sql .= "SELECT $columns ";
+        } 
+        return $this;
     }
 
-    public function from($table)
+
+
+    /* * * * * *  * * * * * * *  * * * * * *
+    *   FROM table1,tabel2                 *  
+    *                                      *
+    *   from('table1,table2')              *
+    *   from(array('table1','table2'))     *
+    *                                      */     
+    public function from($tables)
     {
-        $this->sql .= 'FROM `'.$this->normalize($table).'` ';
+        if(is_array($tables))
+        {
+           $this->sql .= 'FROM '.implode(',',$tables).' '; 
+        }
+        else
+        {   
+            $this->sql .= "FROM $tables ";
+        }   
     	return $this;
     }
 
 
-    public function where($condition, $params = array())
+
+    /* * * * * * * * * * * * *  * * * * * * * * * * * *  * * * * * * * *  *  
+    *   WHERE (x > 1)                                                     * 
+    *   WHERE (x > 5) AND (y IN (5,3,2))                                  *
+    *   WHERE (x LIKE 'Ульяновск') OR (x LIKE 'Самара')                   *
+    *                                                                     *
+    *   ->where('x','>',1);                                               *
+    *   ->where('x','>','5)->and_where('y','in',array(5,3,2));            *
+    *   ->where('x','like','Ульяновск')->or_where('x','like','Самара');   *
+    *                                                                     */
+    public function where($x, $condition, $y)
     {   
-        /* Прописываем WHERE к строке SQL если функция вызывается впервые
-        */
-        if(empty($this->where))
+        if(empty($this->start_where))
         {
             $this->sql .= ' WHERE ';
-            $this->where = 1;
+            $this->start_where = 1;
         }
 
-        /*  Если не указаны параметры, значит всё условие лежит в $condition в виде строки
-        */
-        if(!empty($condition) and empty($params))
+        switch(strtoupper($condition))
         {
-            $this->sql .= ' ('.$this->normalize($condition).') ';
+            case 'IN':
+                $this->sql .= "($x IN (".str_repeat('?,',count($y));                
+                $this->sql = substr($this->sql, 0, -1).'))';
+                $this->execute_params = array_merge((array)$this->execute_params,(array)$y); 
+                break;
+
+            case 'NOT IN':
+                $this->sql .= "($x NOT IN (".str_repeat('?,',count($y));                
+                $this->sql = substr($this->sql, 0, -1).'))';
+                $this->execute_params = array_merge((array)$this->execute_params,(array)$y); 
+                break;
+
+            case 'LIKE':
+                $this->sql .= "($x LIKE ?)";
+                $this->execute_params[] = $y;
+                break;
+
+            case 'NOT LIKE':
+                $this->sql .= "($x NOT LIKE ?)";
+                $this->execute_params[] = $y;
+                break;
+
+            default:
+                $this->sql .= "($x $condition ?)";
+                $this->execute_params[] = $y;
+                break;
         }
 
-        /* Если условие и параметры не пустые, то начинаем обход
-        */
-        if(!empty($condition) and !empty($params))
-        {       
-            $i = 0;
-
-            /* пока не прошли по всем параметрам 
-            */
-            while(!empty($params[$i]))
-            {   
-                /* если текущий параметр не является массивом
-                */
-                if(!is_array($params[$i]))
-                {         
-                    /* если параметр находится в условиях LIKE или IN 
-                    */
-                    if(in_array($condition, $this->like) or in_array($condition, $this->in))
-                    {
-                        /* экранируем текущий параметр 
-                        */
-                        $this->sql .= ' (`'.$params[$i].'`)';
-
-                        /* запоминаем оператор, если он находится в условии LIKE 
-                        *  чтобы повторять при AND или OR 
-                        *  Пример: WHERE x LIKE 'abc' AND x LIKE 'efg'
-                        */
-                        if(in_array($condition, $this->like))
-                        {
-                            $this->znzn = ' (`'.$params[$i].'`)';
-                        }              
-                    }
-
-                    /* иначе, если параметр находится в условии AND или OR
-                    */
-                    else
-                    {
-                        /* просто экранируем текущий параметр
-                        */
-                        $this->sql .= ' ('.$params[$i].')';
-                    }
-                }   
-
-                /* если текущий параметр не является последним в массиве
-                *  И если следующий параметр не является массивом,
-                *  повторяем знак условия после текущего параметра (and, например)
-                */
-                if(!empty($params[$i+1]) and !is_array($params[$i+1]))
-                {
-                    $this->sql .= ' '.$condition;
-                }
-
-                /* [СПЕЦИАЛЬНАЯ ПРОВЕРКА ДЛЯ МАССИВА IN | LIKE]
-                *  если текущий параметр не является последним в массиве
-                *  если следующий параметр это массив с условием IN или LIKE
-                *  аналогично повторяем знак условия после текущего параметра
-                */
-                if(!empty($params[$i+1]) and (in_array($params[$i+1][0], $this->in) or in_array($params[$i+1][0], $this->like) ))/////////////ТУТ  and !is_array($params[$i+1])
-                {
-                    $this->sql .= ' '.$condition;
-                }
-
-                /* Если текущий параметр - это массив, 
-                *  Но массив обычный, без условий IN | LIKE
-                *  То огорождаем его скобками, происходит рекурсия
-                *  + если после массива следует элемент, прописываем знак условия (and например)
-                */
-                if(is_array($params[$i]) and (!in_array($condition, $this->in) and !in_array($condition, $this->like)) ) // если наткнулись на вложеный масив
-                {
-                    $this->sql .= ' (';
-                    $this->where($params[$i][0],$params[$i][1]);
-                    $this->sql .= ' )';
-
-                    if(!empty($params[$i+1])) 
-                    {
-                        $this->sql .= ' '.$condition;
-                    }                     
-                }
-
-                /* Если мы наткнулись на массив, который лежит в условии LIKE
-                *  array('like', array())
-                */
-                if(is_array($params[$i]) and in_array($condition, $this->like))
-                {
-                    $this->sql .= ' ';
-                    
-                    /* Экранируем значения найденного массива           */
-                    $j = 0;
-                    while($j != (count($params[$i])))
-                    {
-                        $paramz[$i][$j] = '(`'.$params[$i][$j].'`)';
-                        $j++;
-                    }
-                    /* ------------------------------------------------ */
-
-                    /*  переводим массив в строку  */
-                    $smb = implode(',', $paramz[$i]); 
-
-                    /* Если это просто LIKE, а не OR NOT LIKE, NOT LIKE
-                    *  то меняем запятые в строке параметров на 'AND $х LIKE'
-                    */
-                    if(!in_array($condition, array('OR NOT LIKE','or not like','NOT LIKE','not like')))
-                    {
-                        $this->sql .= ' '.$condition.' ';
-                        $smb = str_replace(","," AND $this->znzn LIKE ", $smb); 
-                        $this->sql .= $smb; 
-                    }
-
-                    /* Если это OR LIKE
-                    *  то меняем запятые в строке параметров на 'OR $х LIKE'
-                    */
-                    elseif(in_array($condition, array('OR LIKE','or like')))
-                    {
-                        $this->sql .= ' '.'LIKE ';
-                        $smb = str_replace(","," OR $this->znzn LIKE ", $smb);  
-                        $this->sql .= $smb; 
-                    }
-
-                    /* Если это NOT LIKE
-                    *  то меняем запятые в строке параметров на 'AND $х NOT LIKE'
-                    */
-                    elseif(in_array($condition, array('NOT LIKE','not like')))
-                    {
-                        $this->sql .= ' '.$condition.' '; //если это простой LIKE
-                        $smb = str_replace(","," AND $this->znzn NOT LIKE ", $smb); 
-                        $this->sql .= $smb;
-                    }
-
-                    /* Если это OR NOT LIKE
-                    *  то меняем запятые в строке параметров на 'OR $х NOT LIKE'
-                    */
-                    elseif(in_array($condition, array('OR NOT LIKE','or not like')))
-                    {
-                        $this->sql .= ' '.'NOT LIKE ';
-                        $smb = str_replace(","," OR $this->znzn NOT LIKE ", $smb);  
-                        $this->sql .= $smb;
-                    }              
-                } // обработка like закончилась
-
-                /* Если мы наткнулись на массив, который лежит в условии IN
-                *  where('in',array('x',array(10,9)))
-                */
-                if(is_array($params[$i]) and in_array($condition, $this->in)) // для IN NOT IN
-                {
-                    $this->sql .= ' '.$condition;
-                    $this->sql .= ' (';
-                    $this->sql .= implode(',', $params[$i]);
-                    $this->sql .= ')';                        
-                }
-
-                $i++;
-            }
-        }
         return $this;
-    }   
+    }
 
-    public function orderby($condition, $params=array())
+    public function and_where($x, $condition, $y)
     {
-        /* если не указан порядок сортировки 
-        */
-        if(!empty($condition) and empty($params))
+        $this->sql .= ' AND ';
+        $this->where($x,$condition,$y);
+        return $this;   
+    }
+
+    public function or_where($x, $condition, $y)
+    {
+        $this->sql .= ' OR ';
+        $this->where($x,$condition,$y);
+        return $this;   
+    }  
+
+
+
+    /*  * * * *  * * * * * * * * * * * * *  ** * *
+    *   ORDER BY x,z DESC                        *
+    *                                            *
+    *   orderby('x,z','DESC');                   *
+    *   orderby(array('x','z'),'DESC');          *
+    *                                            */
+    public function orderby($params, $condition)
+    {
+        if(is_array($params)) 
         {
-            /* если подан массив параметров
-            */
-            if(is_array($condition))
-            {
-                /* экранирование и фильтрация значений массива */
-                $j = 0;
-                while($j != (count($condition))) 
-                {
-                    $condition[$j] = '`'.$this->normalize($condition[$j]).'`';
-                    $j++;
-                }
-                /* --------------------------------------------------------- */
-
-                $this->sql .= 'ORDER BY '.implode(',', $condition).' ';
-            }
-
-            /* если подана строка параметров
-            */
-            else
-            {
-                $this->sql .= 'ORDER BY '.$this->normalize($condition).' ';
-            }
+            $this->sql .= ' ORDER BY '.implode(',', $params).' ';
+        }
+        else 
+        {
+            $this->sql .= " ORDER BY $params ";
         }
 
-        /* если есть условие сортировки и параметры 
-        */
-        elseif(!empty($condition) and !empty($params)) 
+        if(!empty($condition)) 
         {
-            /* если подан массив параметров
-            */
-            if(is_array($params))
-            {
-                /* экранирование и фильтрация */
-                $j = 0;
-                while($j != (count($params))) 
-                {
-                    $params[$j] = '`'.$this->normalize($params[$j]).'`';
-                    $j++;
-                }
-                /* ---------------------------------------------------- */
-
-                /* приписываем условие сортировки */
-                $this->sql .= 'ORDER BY '.implode(',', $params).' '.$this->normalize($condition).' ';
-            }
-
-            /* если подана строка параметров
-            */
-            else
-            {
-                $this->sql .= 'ORDER BY '.$this->normalize($params).' '.$this->normalize($condition).' ';
-            }
+            $this->sql .= " $condition ";
         }       
-
         return $this;
     }
 
-    public function limit($amount)
+
+
+    /* * *  * ** *  * * * * * * * * * * * * * * * 
+    *   LIMIT 10,20                             *
+    *                                           *
+    *   limit(10,20)                            *
+    *                                           */
+    public function limit($x1, $x2 = null)
     {
-        /* наращиваю запрос, а значение $amount запоминаю, 
-        *  чтобы потом прибиндить 
-        */
-        $this->sql .= 'LIMIT :amount ';
-        $this->limit = $amount;
+        if(!empty($x2))
+        {
+            $this->sql .= 'LIMIT :limit_1, :limit_2 ';
+            $this->limit_params[] = $x1;
+            $this->limit_params[] = $x2;  
+        }
+        else
+        {
+            $this->sql .= 'LIMIT :limit_1 ';
+            $this->limit_params[] = $x1;
+        }
         return $this;
     }
 
-    public function dropTable($table)
+
+
+
+    /* * * * * *  ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  ** * *  * 
+    *   LEFT JOIN table2 ON table1.id = table2.id_student AND table1.x = 'something'                *
+    *                                                                                               *
+    *   leftJoin('table2', '(table1.id = table2.id_student AND table1.x = ?)', array('something')); *
+    *                                                                                               */
+    public function addjoin($table, $condition, $params = array())
     {
-        $this->sql .= "DROP TABLE `$table`";
+        $this->sql .= "JOIN $table ON $condition ";
+
+        foreach($params as $v)
+        {
+            $this->execute_params[] = $v;
+        }
+    }
+
+    public function innerjoin($table, $condition, $params = array())
+    {
+        $this->sql .= "INNER ";
+        $this->addjoin($table, $condition, $params = array());
         return $this;
     }
+
+    public function leftjoin($table, $condition, $params = array())
+    {
+        $this->sql .= "LEFT ";
+        $this->addjoin($table, $condition, $params = array());
+        return $this;
+    }
+
+    public function rightjoin($table, $condition, $params = array())
+    {
+        $this->sql .= "RIGHT ";
+        $this->addjoin($table, $condition, $params = array());
+        return $this;
+    }
+
+    public function crossjoin($table)
+    {
+        $this->sql .= "CROSS JOIN $table ";
+        return $this;
+    }
+
+    public function naturaljoin($table)
+    {
+        $this->sql .= "NATURAL JOIN $table ";
+        return $this;
+    }
+
+
+
+
+    /*  * * * *  * * * * * * * * * * * * *  ** * *
+    *   GROUP BY x,z                             *
+    *                                            *
+    *   groupby('x, z');                         *
+    *   groupby(array('x','z'));                 *
+    *                                            */
+    public function groupby($columns)
+    {
+        if(is_array($columns))
+        {
+            $this->sql .= 'GROUP BY '.implode(',',$columns).' '; 
+        }
+        else
+        {   
+            $this->sql .= "GROUP BY $columns ";
+        } 
+        return $this; 
+    }
+
+
+
+    /* look to where()
+    */
+    public function having($x, $condition, $y)
+    {
+       if(empty($this->start_having))
+        {
+            $this->sql .= ' HAVING ';
+            $this->start_having = 1;
+        }
+
+        switch(strtoupper($condition))
+        {
+            case 'IN':
+                $this->sql .= "($x IN (".str_repeat('?,',count($y));                
+                $this->sql = substr($this->sql, 0, -1).'))';
+                $this->execute_params = array_merge((array)$this->execute_params,(array)$y); 
+                break;
+
+            case 'NOT IN':
+                $this->sql .= "($x NOT IN (".str_repeat('?,',count($y));                
+                $this->sql = substr($this->sql, 0, -1).'))';
+                $this->execute_params = array_merge((array)$this->execute_params,(array)$y); 
+                break;
+
+            case 'LIKE':
+                $this->sql .= "($x LIKE ?)";
+                $this->execute_params[] = $y;
+                break;
+
+            case 'NOT LIKE':
+                $this->sql .= "($x NOT LIKE ?)";
+                $this->execute_params[] = $y;
+                break;
+
+            default:
+                $this->sql .= "($x $condition ?)";
+                $this->execute_params[] = $y;
+                break;
+        }
+        return $this; 
+    }
+
+    public function and_having($x, $condition, $y)
+    {
+        $this->sql .= ' AND ';
+        $this->having($x,$condition,$y);
+        return $this;   
+    }
+
+    public function or_having($x, $condition, $y)
+    {
+        $this->sql .= ' OR ';
+        $this->having($x,$condition,$y);
+        return $this;   
+    } 
+
+
+
+
+    /* * ** * * * * * *  * * * * * * * * *
+    * select.. UNION ..select            *
+    *                                    *
+    * .. ->union('SELECT x FROM table'); *
+    *                                    *
+    * .. ->union();                      *
+    * $db->select(..)                    *
+    *                                    */
+    public function union($sql = null)
+    {
+        if(!empty($sql))
+        {
+            $this->sql .= ' UNION ($sql)'; 
+        }
+        else
+        {
+            $this->sql .= ' UNION ';  
+        }
+        return $this;
+    } 
+
 
 
     public function save()
     {    
-    	$query = $this->prepare($this->sql);
-  
-        if(!empty($this->limit))
-        {
-            $query->bindValue(':amount', $this->limit, PDO::PARAM_INT);
-        }
-
-        if(!empty($this->insert))
-        {
-             $query->execute($this->insert);
-             $this->sql = '';
-        }
-
-        if(!empty($this->update_columns))
-        {
-            $columns_params = array_merge((array)$this->update_columns, (array)$this->update_params);
-            $query->execute($columns_params);
-            $this->sql = '';
-        }
-
-        if(!empty($this->delete_params))
-        {
-            $query->execute($this->delete_params);
-            $this->sql = '';
-        }
+    	$query = $this->pdo->prepare($this->sql);
         
-        else
+        /*  Когда PDO работает в режиме эмуляции, все данные, 
+            которые были переданы напрямую в execute(), форматируются как строки. 
+            То есть, эскейпятся и обрамляются кавычками. 
+            Поэтому LIMIT ?,? превращается в LIMIT '10', '10' 
+            и очевидным образом вызывает ошибку синтаксиса.
+            Поэтому использую bindValue, принудительно выставляя параметрам тип PDO::PARAM_INT.
+        */   
+        if(!empty($this->limit_params))
         {
-            $query->execute();
-            $this->sql = '';
+            $query->bindValue(':limit_1', $this->limit_params[0], PDO::PARAM_INT);
+            if(!empty($this->limit_params[1]))
+            {
+                $query->bindValue(':limit_2', $this->limit_params[1], PDO::PARAM_INT);
+            }      
         }
-        
-       
-        echo 'SQL :  '.$this->sql.'<br>';
 
-        /* просмотр для себя */
-        foreach ($query as $row)
-        {
-            echo $row[id_city].' | '.$row[name_city].' | '.$row[amount_of_people].'<br>';
-        }
-        /* ------------------------------------------ */
+        $query->execute($this->execute_params);
     }
 
-    public function normalize($line)
-    {
-        //здесь будет очистка мусора и экранирование
-    	return $line;
-    }
-}    	
 
-$db = new MyQueryBuilder($config);	
-//$db->select(array('id_city','name_city'))->from('City')->where('and', array('id=1','id=2', array('or', array('x=5','x=7',array('and',array('v=1','v=2')),'z=3' )), 'y = 2')); 
-//$db->select()->from('City')->where('OR',array('x=1','x=2',  array('in',array('x',array(10,20)))  ));
+}   
 
 
 
-
-
-
-//$db->update('City', array('name_city'=>'Ульяноz', 'amount_of_people'=>5), 'id_city = ? or id_city = ?', array(1,2))->save();
-
-//$db->delete('City', 'id_city = ? or id_city = ?', array(1,2))->save();
-
-//$db->createTable('NEW2', array('id'=>'int not null primary key', 'name'=>'varchar(30) not null'))->save();
-//$db->insert('City', array('id_city'=>'5','name_city'=>'ЯЯЯЯЯ','amount_of_people'=>'33'))->save();
-
-//echo '<br><br>';
-
-//$db->select()->from('City')->save();
-
-//$db->dropTable('NEW1')->save();
+$config = array(
+    'type'=>'mysql',
+    'user'=>'root',
+    'pass'=>'',
+    'host'=>'localhost', 
+    'dbname'=>'MyQueryBuilder'
+);
