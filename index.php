@@ -449,7 +449,7 @@ class MyQueryBuilder
 }   
 
 
-
+/*
 $config = array(
     'type'=>'mysql',
     'user'=>'root',
@@ -457,3 +457,4 @@ $config = array(
     'host'=>'localhost', 
     'dbname'=>'MyQueryBuilder'
 );
+*/
