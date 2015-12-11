@@ -31,3 +31,19 @@ $db->insert('Table1', array('id'=>'5','name'=>'Ульяновск'))->execute();
 ```sql
 INSERT INTO Table1 (id,name) VALUES (5, 'Ульяновск');
 ```
+**public function delete($table, $conditions = '', $params = array())**
+```php
+$db->delete('Table1', 'id = ? or id = ?', array(1,2))->execute();
+```
+```sql
+DELETE FROM Table1 WHERE (id = 1) OR (id = 2) 
+```
+**public function select($columns = '*')**
+```php
+$db->select()->execute() - равнозначно SELECT *
+
+$db->select('x1,x2')->execute() или $db->select(array('x1','x2'))->execute();
+```
+```sql
+SELECT x1,x2
+```
