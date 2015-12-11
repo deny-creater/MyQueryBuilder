@@ -118,9 +118,13 @@ GROUP BY x,z
 **public function union($sql = null)**
 ```php
 union('SELECT x FROM table')
+
+$db->select()...->union()->select()...
 ```
 ```sql
 .. UNION (SELECT x FROM table)
+
+.. SELECT .. UNION .. SELECT ..
 ```
 
 
