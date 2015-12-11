@@ -40,9 +40,9 @@ DELETE FROM Table1 WHERE (id = 1) OR (id = 2)
 ```
 **public function select($columns = '*')**
 ```php
-$db->select()->execute() - равнозначно SELECT *
+$db->select() - равнозначно SQL запросу SELECT (*)
 
-$db->select('x1,x2')->execute() или $db->select(array('x1','x2'))->execute();
+$db->select('x1,x2') =  $db->select(array('x1','x2'))
 ```
 ```sql
 SELECT x1,x2
