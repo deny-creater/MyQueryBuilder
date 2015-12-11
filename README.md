@@ -53,8 +53,25 @@ SELECT x1,x2
 ```
 **public function from($tables)**
 ```php
-from('table1,table2') или from(array('table1','table2'))
+from('table1,table2')
+
+from(array('table1','table2'))
 ```
 ```sql
 FROM table1,tabel2
+```
+**public function where($x, $condition, $y)**
+```php
+where('x','>',1) 
+
+where('x','>','5)->and_where('y','in',array(5,3,2)) 
+
+where('x','like','Ульяновск')->or_where('x','like','Самара')
+```
+```sql
+WHERE (x > 1)                                                     
+
+WHERE (x > 5) AND (y IN (5,3,2))                                  
+
+WHERE (x LIKE 'Ульяновск') OR (x LIKE 'Самара')
 ```
