@@ -1,5 +1,7 @@
 # MyQueryBuilder
 
+*Описание работы с оновными методами класса*
+
 **public function create($table, $columns, $options=null)**
 ```php
 $db->createTable('Table1', array(
