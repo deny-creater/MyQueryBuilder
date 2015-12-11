@@ -41,7 +41,7 @@ $db->delete('Table1', 'id = ? or id = ?', array(1,2))->execute();
 ```sql
 DELETE FROM Table1 WHERE (id = 1) OR (id = 2) 
 ```
-*public function select($columns = 'ж')*
+*public function select($columns = '*')
 ```php
 $db->select()
 ```
@@ -49,7 +49,9 @@ $db->select()
 SELECT *
 ```
 ```php
-$db->select('x1,x2') =  $db->select(array('x1','x2'))
+$db->select('x1,x2')
+
+$db->select(array('x1','x2'))
 ```
 ```sql
 SELECT x1,x2
