@@ -115,7 +115,7 @@ groupby(array('x','z'))
 ```sql
 GROUP BY x,z
 ```
-public function union($sql = null)
+**public function union($sql = null)**
 ```php
 union('SELECT x FROM table')
 ```
