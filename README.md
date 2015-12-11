@@ -1,13 +1,12 @@
-# MyQueryBuilder
-## Примеры использования
+# MyQueryBuilder / Инструкция
 
-###### public function create($table, $columns, $options=null) 
+** public function create($table, $columns, $options=null) **
 Вызов:
 ```php
 $db->createTable('Table1', array(
   'id'   => 'int not null',                                  
   'name' => 'varchar(30)'                                    
-));
+))->execute();
 ```
 Полученный SQL запрос: 
 ```sql
@@ -17,10 +16,10 @@ CREATE TABLE Table1
   name varchar(30)
 )
 ```
-###### public function update($table, $columns, $conditions = '', $params = array())
+** public function update($table, $columns, $conditions = '', $params = array()) **
 Вызов:
 ```php
-$db->update('Table1', array('x'=>1), 'id = ? or id = ?', array(1,2));
+$db->update('Table1', array('x'=>1), 'id = ? or id = ?', array(1,2))->execute();
 ));
 ```
 Полученный SQL запрос: 
