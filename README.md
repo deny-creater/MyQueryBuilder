@@ -1,11 +1,12 @@
 # MyQueryBuilder
 
 **public function create($table, $columns, $options=null)**
+```php
 $db->createTable('Table1', array(
   'id'   => 'int not null',                                  
   'name' => 'varchar(30)'                                    
 ))->execute();
-
+```
 ```sql
 CREATE TABLE Table1 
 (
@@ -43,10 +44,13 @@ $db->select() - равнозначно SQL запросу SELECT (*)
 
 $db->select('x1,x2') =  $db->select(array('x1','x2'))
 ```
+```sql
 SELECT x1,x2
-
+```
 **public function from($tables)**
 ```php
 from('table1,table2') или from(array('table1','table2'))
 ```
+```sql
 FROM table1,tabel2
+```
