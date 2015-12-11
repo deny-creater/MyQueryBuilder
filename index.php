@@ -2,23 +2,68 @@
 
 class MyQueryBuilder
 {
-	public $sql, $execute_params, $limit_params, $start_where, $start_having;
-   
+    /**
+     * string for composing sql request
+     *
+     * @var string
+     */
+	private $sql;
+
+    /**
+     * array for saving sql parameters
+     *
+     * @var array
+     */
+    private $execute_params;
+
+    /**
+     * for saving limit parameter
+     *
+     * @var int
+     */
+    private $limit_value;
+
+    /**
+     * for saving offset parameter
+     *
+     * @var int
+     */
+    private $offset_value;
+
+    /**
+     * key of first starting where()
+     *
+     * @var int
+     */
+    private $start_where;
+
+    /**
+     * key of first starting having()
+     *
+     * @var int
+     */
+    private $start_having;
+    
+    /**
+     * Constructor create a connection to a database
+     * 
+     * @param mixed[] $config Array 
+     */
 	public function __construct($config) 
     {	
         $dsn = "$config[type]:host=$config[host];dbname=$config[dbname]";
         $this->pdo = new PDO($dsn, $config[user], $config[pass]);
     }
 
-
-    /* * * * * * * * * * * * *  * * * * * * * * * * * * ** * * * * *  
-    * CREATE TABLE Table1 (id int not null, name varchar(30))      *
-    *                                                              *
-    * $db->createTable('Table1', array(                            *
-    *   'id'   => 'int not null',                                  *
-    *   'name' => 'varchar(30)'                                    *
-    * ));                                                          *
-    *                                                              */
+    /**
+    * CREATE TABLE
+    *
+    * @param string $table 
+    * @param mixed[] $columns Array
+    * @param null|string $options
+    *
+    * @return $this  
+    */
     public function create($table, $columns, $options=null)
     {
         $this->sql .= "CREATE TABLE $table ( ";
@@ -34,15 +79,16 @@ class MyQueryBuilder
         return $this;
     }
 
-
-
-    /* * * * * * * *  * * * * * * * *  * * * * **  * * * * ** *  * * ** * * ** **
-    *  UPDATE Table1                                                            *   
-    *  SET x = 1                                                                *
-    *  WHERE (id = 1) or (id = 2)                                               *
-    *                                                                           *
-    *  $db->update('Table1', array('x'=>1), 'id = ? or id = ?', array(1,2));    *
-    *                                                                           */    
+    /**
+    * UPDATE TABLE
+    *
+    * @param string $table 
+    * @param mixed[] $columns Array
+    * @param string|null $conditions
+    * @param array $params
+    *
+    * @return $this  
+    */    
     public function update($table, $columns, $conditions = '', $params = array())
     {
         $this->sql .= "UPDATE $table SET ";
@@ -63,13 +109,14 @@ class MyQueryBuilder
         return $this;
     }   
 
-
-
-    /* * * * * * * *  * * * * * * * *  * * * * **  * * * * ** *  * * ** *
-    *  INSERT INTO Table1 (id,name) VALUES (5, 'Ульяновск');            *
-    *                                                                   *
-    *  $db->insert('Table1', array('id'=>'5','name'=>'Ульяновск'));     *
-    *                                                                   */                                                          
+    /**
+    * INSERT INTO
+    *
+    * @param string $table 
+    * @param mixed[] $columns Array
+    *
+    * @return $this
+    */                                                             
     public function insert($table, $columns)
     {
         $this->sql .= "INSERT INTO $table (";
@@ -88,13 +135,13 @@ class MyQueryBuilder
         return $this;
     }
 
-
-
-    /* * * * * * *  * * * * * * * *  * * * * **  * * * * ** *  * * ** *
-    *   DELETE FROM Table1 WHERE (id = 1) OR (id = 2)                 *
-    *                                                                 *
-    *   $db->delete('Table1', 'id = ? or id = ?', array(1,2));        *   
-    *                                                                 */
+    /**
+    * DELETE FROM
+    *
+    * @param string $table 
+    * @param string|null $conditions
+    * @param array $params  
+    */    
     public function delete($table, $conditions = '', $params = array())
     {
         $this->sql .= "DELETE FROM $table WHERE ($conditions) ";
@@ -106,16 +153,13 @@ class MyQueryBuilder
         return $this;
     }
 
-
-
-    /** * * * * *  * * * * * * *  * * * * * *
-    *   SELECT *                            *
-    *   SELECT x1,x2                        *
-    *                                       *
-    *   select()                            *
-    *   select('x1,x2')                     *
-    *   select(array('x1','x2'))            *
-    *                                       */
+    /**
+    * SELECT
+    *
+    * @param array|string|null $columns
+    *
+    * @return $this 
+    */    
     public function select($columns = '*')
     {
         if(is_array($columns))
@@ -129,14 +173,13 @@ class MyQueryBuilder
         return $this;
     }
 
-
-
-    /* * * * * *  * * * * * * *  * * * * * *
-    *   FROM table1,tabel2                 *  
-    *                                      *
-    *   from('table1,table2')              *
-    *   from(array('table1','table2'))     *
-    *                                      */     
+    /**
+    * FROM
+    *
+    * @param array|string $tables
+    *
+    * @return $this  
+    */       
     public function from($tables)
     {
         if(is_array($tables))
@@ -150,17 +193,15 @@ class MyQueryBuilder
     	return $this;
     }
 
-
-
-    /* * * * * * * * * * * * *  * * * * * * * * * * * *  * * * * * * * *  *  
-    *   WHERE (x > 1)                                                     * 
-    *   WHERE (x > 5) AND (y IN (5,3,2))                                  *
-    *   WHERE (x LIKE 'Ульяновск') OR (x LIKE 'Самара')                   *
-    *                                                                     *
-    *   ->where('x','>',1);                                               *
-    *   ->where('x','>','5)->and_where('y','in',array(5,3,2));            *
-    *   ->where('x','like','Ульяновск')->or_where('x','like','Самара');   *
-    *                                                                     */
+    /**
+    * WHERE
+    *
+    * @param string $x 
+    * @param string $condition
+    * @param string|array|int $y
+    *
+    * @return $this
+    */    
     public function where($x, $condition, $y)
     {   
         if(empty($this->start_where))
@@ -216,15 +257,15 @@ class MyQueryBuilder
         return $this;   
     }  
 
-
-
-    /*  * * * *  * * * * * * * * * * * * *  ** * *
-    *   ORDER BY x,z DESC                        *
-    *                                            *
-    *   orderby('x,z','DESC');                   *
-    *   orderby(array('x','z'),'DESC');          *
-    *                                            */
-    public function orderby($params, $condition)
+    /**
+    * ORDER BY
+    *
+    * @param string|array $params
+    * @param string|null $condition
+    *
+    * @return $this
+    */
+    public function orderby($params, $condition=null)
     {
         if(is_array($params)) 
         {
@@ -242,37 +283,43 @@ class MyQueryBuilder
         return $this;
     }
 
-
-
-    /* * *  * ** *  * * * * * * * * * * * * * * * 
-    *   LIMIT 10,20                             *
-    *                                           *
-    *   limit(10,20)                            *
-    *                                           */
-    public function limit($x1, $x2 = null)
+    /**
+    * LIMIT
+    *
+    * @param int $x
+    *
+    * @return $this
+    */
+    public function limit($x)
     {
-        if(!empty($x2))
-        {
-            $this->sql .= 'LIMIT :limit_1, :limit_2 ';
-            $this->limit_params[] = $x1;
-            $this->limit_params[] = $x2;  
-        }
-        else
-        {
-            $this->sql .= 'LIMIT :limit_1 ';
-            $this->limit_params[] = $x1;
-        }
+        $this->sql .= 'LIMIT :limit';
+        $this->limit_value = $x; 
         return $this;
     }
 
+    /**
+    * OFFSET
+    *
+    * @param int $y
+    *
+    * @return $this
+    */
+    public function offset($y)
+    {
+        $this->sql .= ' OFFSET :offset';
+        $this->offset_value = $y;    
+        return $this;
+    }
 
-
-
-    /* * * * * *  ** * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  ** * *  * 
-    *   LEFT JOIN table2 ON table1.id = table2.id_student AND table1.x = 'something'                *
-    *                                                                                               *
-    *   leftJoin('table2', '(table1.id = table2.id_student AND table1.x = ?)', array('something')); *
-    *                                                                                               */
+    /**
+    * INNER/LEFT/RIGHT JOIN
+    *
+    * @param string $table
+    * @param string $condition
+    * @param array|null $params
+    *
+    * @return $this
+    */
     public function addjoin($table, $condition, $params = array())
     {
         $this->sql .= "JOIN $table ON $condition ";
@@ -304,27 +351,39 @@ class MyQueryBuilder
         return $this;
     }
 
+    /**
+    * CROSS JOIN
+    *
+    * @param string $table
+    *
+    * @return $this
+    */
     public function crossjoin($table)
     {
         $this->sql .= "CROSS JOIN $table ";
         return $this;
     }
 
+    /**
+    * NATURAL JOIN
+    *
+    * @param string $table
+    *
+    * @return $this
+    */
     public function naturaljoin($table)
     {
         $this->sql .= "NATURAL JOIN $table ";
         return $this;
     }
 
-
-
-
-    /*  * * * *  * * * * * * * * * * * * *  ** * *
-    *   GROUP BY x,z                             *
-    *                                            *
-    *   groupby('x, z');                         *
-    *   groupby(array('x','z'));                 *
-    *                                            */
+    /**
+    * GROUP BY
+    *
+    * @param string|array $columns
+    *
+    * @return $this
+    */
     public function groupby($columns)
     {
         if(is_array($columns))
@@ -338,10 +397,15 @@ class MyQueryBuilder
         return $this; 
     }
 
-
-
-    /* look to where()
-    */
+    /**
+    * HAVING
+    *
+    * @param string $x 
+    * @param string $condition
+    * @param string|array|int $y
+    *
+    * @return $this
+    */ 
     public function having($x, $condition, $y)
     {
        if(empty($this->start_having))
@@ -396,17 +460,13 @@ class MyQueryBuilder
         return $this;   
     } 
 
-
-
-
-    /* * ** * * * * * *  * * * * * * * * *
-    * select.. UNION ..select            *
-    *                                    *
-    * .. ->union('SELECT x FROM table'); *
-    *                                    *
-    * .. ->union();                      *
-    * $db->select(..)                    *
-    *                                    */
+    /**
+    * UNION
+    *
+    * @param string|null $sql
+    *
+    * @return $this 
+    */ 
     public function union($sql = null)
     {
         if(!empty($sql))
@@ -415,52 +475,44 @@ class MyQueryBuilder
         }
         else
         {
+            $this->start_where = null;
+            $this->start_having = null;
             $this->sql .= ' UNION ';  
         }
         return $this;
     } 
 
-
-
-    public function save()
+    /**
+    * Prepare and execute sql request
+    *
+    * @return $this 
+    */ 
+    public function execute()
     {    
     	$query = $this->pdo->prepare($this->sql);
-        
-        /*  Когда PDO работает в режиме эмуляции, все данные, 
-            которые были переданы напрямую в execute(), форматируются как строки. 
-            То есть, эскейпятся и обрамляются кавычками. 
-            Поэтому LIMIT ?,? превращается в LIMIT '10', '10' 
-            и очевидным образом вызывает ошибку синтаксиса.
-            Поэтому использую bindValue, принудительно выставляя параметрам тип PDO::PARAM_INT.
-        */   
-        if(!empty($this->limit_params))
-        {
-            $query->bindValue(':limit_1', $this->limit_params[0], PDO::PARAM_INT);
-            if(!empty($this->limit_params[1]))
-            {
-                $query->bindValue(':limit_2', $this->limit_params[1], PDO::PARAM_INT);
-            }      
-        }
+               
+        if(!empty($this->limit_value))
+            $query->bindValue(':limit', $this->limit_value, PDO::PARAM_INT);
+
+        if(!empty($this->offset_value))
+            $query->bindValue(':offset', $this->offset_value, PDO::PARAM_INT);       
 
         $query->execute($this->execute_params);
-        
-        $this->sql = '';
-        $this->limit_params = '';
-        $this->execute_params = '';
-        $this->start_where = '';
-        $this->start_having = '';
+
+        return $this;
     }
 
-
-}   
-
-
-/*
-$config = array(
-    'type'=>'mysql',
-    'user'=>'root',
-    'pass'=>'',
-    'host'=>'localhost', 
-    'dbname'=>'MyQueryBuilder'
-);
-*/
+    /**
+    * Reset all parameters and clear sql line
+    */ 
+    public function reset()
+    {
+        $this->sql = '';
+        $this->limit_value = null;
+        $this->offset_value = null;
+        $this->execute_params = null;
+        $this->start_where = null;
+        $this->start_having = null;
+        return $this;
+    }
+}
