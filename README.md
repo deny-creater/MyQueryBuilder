@@ -75,3 +75,50 @@ WHERE (x > 5) AND (y IN (5,3,2))
 
 WHERE (x LIKE 'Ульяновск') OR (x LIKE 'Самара')
 ```
+**public function orderby($params, $condition=null)**
+```php
+orderby('x,z','DESC')                   
+orderby(array('x','z'),'DESC')
+```
+```sql
+ORDER BY x,z DESC 
+```
+**public function limit($x)**
+```php
+limit(10)
+```
+```sql
+LIMIT 10
+```
+**public function offset($y)**
+```php
+offset(2)
+```
+```sql
+OFFSET 2
+```
+**public function leftjoin($table, $condition, $params = array())**
+```php
+leftJoin('table2', '(table1.id = table2.id_student AND table1.x = ?)', array('something'))
+```
+```sql
+LEFT JOIN table2 ON table1.id = table2.id_student AND table1.x = 'something'
+```
+**public function groupby($columns)**
+```php
+groupby('x, z')
+
+groupby(array('x','z'))
+```
+```sql
+GROUP BY x,z
+```
+public function union($sql = null)
+```php
+union('SELECT x FROM table')
+```
+```sql
+.. UNION (SELECT x FROM table)
+```
+
+
