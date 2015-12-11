@@ -1,6 +1,6 @@
 # MyQueryBuilder
 
-**Описание работы с оновными методами класса**
+***Описание работы с оновными методами класса***
 
 
 *public function create($table, $columns, $options=null)*
