@@ -417,17 +417,7 @@ class MyQueryBuilder
                 $this->sql = substr($this->sql, 0, -1).'))';
                 $this->execute_params = array_merge((array)$this->execute_params,(array)$y); 
                 break;
-
-            case 'LIKE':
-                $this->sql .= "($x LIKE ?)";
-                $this->execute_params[] = $y;
-                break;
-
-            case 'NOT LIKE':
-                $this->sql .= "($x NOT LIKE ?)";
-                $this->execute_params[] = $y;
-                break;
-
+                
             default:
                 $this->sql .= "($x $condition ?)";
                 $this->execute_params[] = $y;
